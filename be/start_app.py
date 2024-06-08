@@ -20,7 +20,7 @@ def create_notebook():
             creator(url)
             filename = 'new_exercise_notebook'
             # Save the notebook
-            notebook_path = f'{filename}.ipynb'
+            notebook_path = f'../{filename}.ipynb'
 
             # Serve the notebook as a file download
             return send_file(notebook_path, as_attachment=True)

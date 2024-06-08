@@ -8,14 +8,13 @@ from groq import Groq
 import nbformat as nbf
 
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print(parent_dir)
+#print(parent_dir)
 sys.path.insert(0, parent_dir)
 from createSandbox import create_venv_and_run_code
 
 # This script provides the agents function for the python api call with relevance api
 dotenv.load_dotenv("../.env")
 GROQ_KEY = os.environ["GROQ_KEY"]
-print(GROQ_KEY)
 client = Groq(
     api_key=GROQ_KEY
 )
@@ -25,6 +24,7 @@ YOUR_API_KEY = os.getenv("RELEVANCE_AI_API_KEY")
 exercise_pattern = r'Exercise (\d+):\s*([\s\S]*?)(?=Exercise \d+:|$)'
 solution_pattern = r'Exercise (\d+)\s*\*\*\n```python\n([\s\S]*?)(?=```)'
 testcase_pattern = r'Exercise (\d+)\s*\*\*\n```python\n([\s\S]*?)(?=```)'
+iteration_pattern = r'```python([\s\S]*?)```'
 
 
 ### General workflow ->
@@ -250,42 +250,71 @@ def correct_test_cases(errors, question, code, test_cases):
                 "role": "user",
                 "content": f""" Due to the errors present in the following code for the question,
                 it does not work correctly. Rewrite the code such that it can pass the test cases.
+
+                Example:
+                ###########################
+                Errors: NameError: name 'np' is not defined
+                Original question: Assign value of 1+2 to variable 'a' and print 'a'
+                a = 1+2
+                #TODO
+
+                Solution: 
+                a = 1+2
+                print(np)
+
+                Testcases:
+                assert a == 3
+                ###########################
+
+
                 Errors: {errors},
                 Original question: {question},
                 Original code: {code},
                 Original test_cases: {test_cases}
-                Return only the re-written code, with NO extra text.
+                
+
                 """,}
         ],
         model = "mixtral-8x7b-32768")
     return test_caller.choices[0].message.content
 
 def library_finder(problem):
-    print("finding the right libraries to install")
+    #print("finding the right libraries to install")
     libraries_found = client.chat.completions.create(
         messages=[
             {
                 "role": "user",
-                "content": f"""Find out the libraries needed to solve the problem, spaced apart. do not include additional 
-                text, do not include asterisks.
-                Output as such:
-                           Example 1: torch, matplotlib
-                           Example 2: torch, tensorflow, BeautifulSoup, requests, lxml
+                "content": f"""
+Identify the libraries required to solve the problem. Do not include additional text or asterisks.
+                ** ONLY WRITE THE LIBRARY NAME, AS NOT DOING SO WILL CAUSE MISALIGNMENT ERRORS IN THE CODE **. A trick to identify the libraries, is to look at the imports in the code.
+                If the library is already included, include only the new libraries that are required to solve the problem. If there are no libraries required, output nothing.
+Examples here:
+###########################
+Example 1: 
+Question:
+import torch
+import numpy
+
+Output: torch numpy
+###########################
+Example 2:
+Question:
+import torch
+import tensorflow
+import matplotlib.pyplot as plt
+
+
+Output: torch tensorflow matplotlib
+###########################
+
+The problem to solve is {problem}
                            The problem to solve is {problem}
                            """
             },],
         model="mixtral-8x7b-32768")
 
-    model_out = libraries_found.choices[0].message.content
-    pattern = r"libraries:\s*(.*)[.]"
-    match = re.search(pattern, model_out)
-
-    if match:
-        libraries = match.group(1).split(', ')
-        libraries_string = ' '.join(libraries)
-        return libraries_string
-    else:
-        return ""
+    return  libraries_found.choices[0].message.content
+  
 
 def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_notebook'):
     import nbformat as nbf
@@ -296,7 +325,7 @@ def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_no
 
     nb.cells.append(nbf.v4.new_markdown_cell("# Setup\nImport your libraries here"))
     nb.cells.append(nbf.v4.new_code_cell("import mercury as mr"))
-    print(exercises)
+    #print(exercises)
     # Loop through the exercises, solutions, and test cases
     for ex_number, ex_content in exercises:
         # Add exercise description as a markdown cell
@@ -322,7 +351,7 @@ def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_no
             nb.cells.append(solution_cell)
         
         # Add test case as a code cell
-        print(testcases)
+        #print(testcases)
         testcase = next((tc[1] for tc in testcases if tc[0] == ex_number), "")
         if testcase:
             testcase_cell = nbf.v4.new_code_cell(testcase.strip()+'\n'+'mr.Confetti()')
@@ -351,21 +380,32 @@ def creator(url):
         extracted_solutions = re.findall(solution_pattern, possible_solution_code)
         extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
     zipped_repository = zip(extracted_problems, extracted_solutions, extracted_testcases)
-    print(zipped_repository)
+    #print(zipped_repository)
 
 
     #code-runner
-    f = open("./requirements.txt","w")
-    libraries_to_install = "torch " + library_finder(generated_problems[-1])
-    print("libraries to install: " + str(libraries_to_install))
-    f.write(libraries_to_install)
+    with open("./requirements.txt","w") as f:
+        #print(generated_problems[-1])
+        libraries_to_install = library_finder(extracted_problems[0][1]) 
+        print("libraries to install: " + str(libraries_to_install))
+        libraries_to_install = libraries_to_install.replace(" ", "\n")
+        f.write(libraries_to_install)
+
+    for i in range(1,len(extracted_problems)):
+        with open("./requirements.txt","w+") as f:
+            libraries_to_install = library_finder(extracted_problems[i][1])
+            print("libraries to install: " + str(libraries_to_install))
+            libraries_to_install = libraries_to_install.replace(" ", "\n")
+            f.write(libraries_to_install)
+    with open("./requirements.txt","r") as f:
+            print(f.read())
 
     verified_problems = []
     verified_solutions = []
     verified_testcases = []
 
     for idx in range(len(extracted_testcases)):
-        status, err = create_venv_and_run_code("./my_venv", "./requirements.txt",
+        status, err = create_venv_and_run_code("./my_venv", "requirements.txt",
                                  extracted_solutions[idx][1] + extracted_testcases[idx][1])
         retry = 0
         # Loop until the solution is verified
@@ -376,9 +416,13 @@ def creator(url):
             # Generate a new solution template based on the error
             # have to correct based on the error
             solution = correct_test_cases(error, extracted_problems[idx][1], extracted_solutions[idx][1], extracted_testcases[idx][1])
-            solution = extracted_solutions[idx][1]
+            #print(solution)
+            #print(extracted_problems[idx][1])
+            #print(re.findall(iteration_pattern, solution))
+            extracted_solutions[idx] = (extracted_solutions[idx][0], re.findall(iteration_pattern, solution)[0])
             # Re-verify the new solution
-            status, err = create_venv_and_run_code("./my_venv", "./requirements.txt",
+            if extracted_solutions[idx][1] != "":
+                status, err = create_venv_and_run_code("./my_venv", "./requirements.txt",
                                  extracted_solutions[idx][1] + extracted_testcases[idx][1])
             retry += 1
         if status:
@@ -386,12 +430,5 @@ def creator(url):
             verified_testcases.append(extracted_testcases[idx])
             verified_solutions.append(extracted_solutions[idx])
 
+    create_notebook(verified_problems, verified_solutions, verified_testcases)
 
-
-    notebook_filename = create_notebook(verified_problems, verified_solutions, verified_testcases)
-    print(notebook_filename)
-    return notebook_filename
-
-if __name__ == "__main__":
-    creator("https://pytorch.org/docs/stable/tensors.html")
- 
