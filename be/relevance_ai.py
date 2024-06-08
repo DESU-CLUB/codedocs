@@ -311,8 +311,9 @@ def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_no
 
 
 
-def main():
-    summary = webScraperAgent("https://pytorch.org/docs/stable/tensors.html")
+def creator(url):
+    summary = webScraperAgent(url)
+    filename = getFileName(url)
     generated_problems = problemGeneratorAgent(summary)
     possible_solution_code = answer_question_agent(generated_problems)
     possible_test_cases = generate_test_cases(possible_solution_code)
@@ -330,7 +331,7 @@ def main():
         print(testcase)
      """
     create_notebook(generated_problems, possible_solution_code, possible_test_cases)
-    
+    return filename
 
 
 
