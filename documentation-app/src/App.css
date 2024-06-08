@@ -21,8 +21,10 @@
 
 .input-box {
   width: 100%;
-  padding: 10px;
+  padding: 5px;
   margin-top: 10px;
+  margin-bottom: 10px;
+  padding-right: -20px;
   border: 1px solid #ccc;
   border-radius: 5px;
 }
@@ -38,10 +40,63 @@
 }
 
 .image-section {
+  display: flex;
+  align-items: flex-start; /* Aligns children to the top */
+  justify-content: center; /* Centers children horizontally */
+  gap: 25px; /* Adds space between the image and the speech bubble */
   margin-top: 20px;
 }
 
 .image-section img {
-  width: 300px;
+  width: 300px; /* Adjust if needed */
   height: auto;
+}
+
+.speech-bubble-container {
+  background-image: url('../public/dialogue.webp');
+  background-size: 100% 100%; /* Adjust this as needed to fit the image appropriately */
+  background-repeat: no-repeat;
+  width: 335px; /* Adjust to match the width of your image */
+  height: 200px; /* Adjust to match the height of your image */
+  display: flex;
+  align-items: center; /* Vertically center the input in the bubble */
+  justify-content: center; /* Horizontally center the input in the bubble */
+}
+
+
+.speech-bubble {
+  position: relative;
+  background-color: #eaeaea;
+  padding: 10px;
+  width: fit-content;
+  margin-top: -30 px; /* Adjust this value to move the bubble up or down */
+}
+
+.speech-bubble input {
+  border: none;
+  outline: none;
+  background-color: #eaeaea;
+  color: black;
+  font-size: 16px;
+  width: 250px; /* Adjust based on your needs */
+  overflow-x: auto; /* Allows horizontal scrolling */
+  white-space: wrap; /* Prevents text from wrapping to a new line */
+}
+
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20px; /* Position of the tail */
+  width: 0;
+  height: 0;
+  border: 10px solid transparent;
+  border-top-color: #eaeaea;
+  border-bottom: 0;
+  margin-left: -10px;
+  margin-bottom: -10px;
+}
+
+.speech-bubble input:focus {
+  border-color: blue;
 }
