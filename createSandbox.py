@@ -1,6 +1,3 @@
-# https://stackoverflow.com/questions/60066755/how-to-start-and-run-a-virtualenv-in-python-script/60072329#60072329
-#!/usr/bin/env python3
-
 #!/usr/bin/env python3
 
 import pathlib
@@ -38,22 +35,17 @@ def _main():
     _run_python_in_venv(venv_context, ['-m', 'pip', 'install', '-U', 'pip'])
     _run_bin_in_venv(venv_context, ['pip', 'install', 'attrs'])
 
+    # Generate the activation script to activate the virtual environment
+    activate_script = pathlib.Path.cwd().joinpath('activate_and_run.sh')
+    with open(activate_script, 'w') as f:
+        f.write(f"#!/bin/bash\n")
+        f.write(f"source {venv_path.joinpath('bin', 'activate')}\n")
+        f.write(f"echo 'Virtual environment activated.'\n")
+        f.write(f"pip freeze\n")  # Add any additional commands here
+        f.write(f"echo 'Additional commands executed.'\n")
+
+    # Make the generated script executable
+    subprocess.run(['chmod', '+x', str(activate_script)])
+
 if __name__ == '__main__':
     _main()
-    
-    # Activate the virtual environment in a new shell session
-    activate_script = pathlib.Path.cwd().joinpath('virt', 'bin', 'activate')
-    if os.name == 'nt':  # Windows
-        activate_script = pathlib.Path.cwd().joinpath('virt', 'Scripts', 'activate.bat')
-    
-    print(f"\nTo activate the virtual environment, run:\nsource {activate_script}")
-
-    # For Windows
-    if os.name == 'nt':
-        print(f"On Windows, run:\n{activate_script}")
-
-    # Print out the packages in this environment
-    subprocess.run(['virt/bin/pip', 'freeze'])
-
-    # Print out the environment I am in
-    subprocess.run(['which', 'python'])
