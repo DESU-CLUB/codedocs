@@ -2,7 +2,12 @@
 # CodeDocs
 Building code puzzles for any documentation
 
+![Screenshot](./images/logo.png)
+
+
 ---
+
+
 
 ## 🚀 Join Us on Our Adventure!
 We are on a mission to build a documentation-to-code puzzle pipeline within 24 hours. Excited to have you on board!
