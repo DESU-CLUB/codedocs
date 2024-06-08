@@ -1,10 +1,16 @@
 import axios from 'axios';
 
-function downloadNotebook() {
+function downloadNotebook(urlToPost) {
     axios({
         url: 'http://localhost:5000/create_notebook', // Adjust the URL based on your Flask app's URL
-        method: 'GET',
+        method: 'POST',
         responseType: 'blob',  // Important: specifies that the response should be treated as a Blob
+        data: {
+            url: urlToPost  // JSON object containing the URL you want to post
+        },
+        headers: {
+            'Content-Type': 'application/json'
+        }
     }).then((response) => {
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
