@@ -134,7 +134,7 @@ Note: You need to complete the exercises by filling in the `###TODO` lines with 
     return problems.choices[0].message.content
 
 
-def answer_question_agent(exercise: str):
+def answer_question_agent(exercise: str, summary):
     print("Trying to answer this question")
     possible_answer = client.chat.completions.create(
         messages=[
@@ -195,7 +195,11 @@ print(ifftn_signal)
 
 
 ```
+Here is the problem:
     {exercise}
+
+Here is a list of usable examples from the library for you to reference:
+{summary}
 
 """,
             }
@@ -242,7 +246,7 @@ assert torch.allclose(ifftn_signal, signal)
         model="mixtral-8x7b-32768")
     return possible_test_cases.choices[0].message.content
 
-def correct_test_cases(errors, question, code, test_cases):
+def correct_test_cases(errors, question, code, test_cases, summary):
     print("correcting test case")
     test_caller = client.chat.completions.create(
         messages=[
@@ -271,6 +275,9 @@ def correct_test_cases(errors, question, code, test_cases):
                 Original question: {question},
                 Original code: {code},
                 Original test_cases: {test_cases}
+
+                Summary of APIS you can reference can be found here:
+                {summary}
                 
 
                 """,}
@@ -285,9 +292,11 @@ def library_finder(problem):
             {
                 "role": "user",
                 "content": f"""
+                Imagine you are LibraryLLAMA, a LLAMA designed only to identify and output in only library names after given source code.
 Identify the libraries required to solve the problem. Do not include additional text or asterisks.
                 ** ONLY WRITE THE LIBRARY NAME, AS NOT DOING SO WILL CAUSE MISALIGNMENT ERRORS IN THE CODE **. A trick to identify the libraries, is to look at the imports in the code.
                 If the library is already included, include only the new libraries that are required to solve the problem. If there are no libraries required, output nothing.
+                Write only the name of the library, 
 Examples here:
 ###########################
 Example 1: 
@@ -308,13 +317,14 @@ Output: torch tensorflow matplotlib
 ###########################
 
 The problem to solve is {problem}
-                           The problem to solve is {problem}
                            """
             },],
         model="mixtral-8x7b-32768")
 
-    return  libraries_found.choices[0].message.content
-  
+    model_out = libraries_found.choices[0].message.content
+    return model_out
+
+    
 
 def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_notebook'):
     import nbformat as nbf
@@ -367,20 +377,19 @@ def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_no
 def creator(url):
     summary = webScraperAgent(url)
     generated_problems = problemGeneratorAgent(summary)
-    possible_solution_code = answer_question_agent(generated_problems)
+    possible_solution_code = answer_question_agent(generated_problems, summary)
     possible_test_cases = generate_test_cases(possible_solution_code)
 
     extracted_problems = re.findall(exercise_pattern, generated_problems)
     extracted_solutions = re.findall(solution_pattern, possible_solution_code)
     extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
     while not(len(extracted_problems) == len(extracted_solutions) == len(extracted_testcases)):
-        possible_solution_code = answer_question_agent(generated_problems)
+        possible_solution_code = answer_question_agent(generated_problems, summary)
         possible_test_cases = generate_test_cases(possible_solution_code)
         extracted_problems = re.findall(exercise_pattern, generated_problems)
         extracted_solutions = re.findall(solution_pattern, possible_solution_code)
         extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
-    zipped_repository = zip(extracted_problems, extracted_solutions, extracted_testcases)
-    #print(zipped_repository)
+
 
 
     #code-runner
@@ -389,14 +398,14 @@ def creator(url):
         libraries_to_install = library_finder(extracted_problems[0][1]) 
         print("libraries to install: " + str(libraries_to_install))
         libraries_to_install = libraries_to_install.replace(" ", "\n")
-        f.write(libraries_to_install)
+        f.write(libraries_to_install+"\n")
 
     for i in range(1,len(extracted_problems)):
-        with open("./requirements.txt","w+") as f:
+        with open("./requirements.txt","a") as f:
             libraries_to_install = library_finder(extracted_problems[i][1])
             print("libraries to install: " + str(libraries_to_install))
             libraries_to_install = libraries_to_install.replace(" ", "\n")
-            f.write(libraries_to_install)
+            f.write(libraries_to_install+"\n")
     with open("./requirements.txt","r") as f:
             print(f.read())
 
@@ -415,7 +424,7 @@ def creator(url):
 
             # Generate a new solution template based on the error
             # have to correct based on the error
-            solution = correct_test_cases(error, extracted_problems[idx][1], extracted_solutions[idx][1], extracted_testcases[idx][1])
+            solution = correct_test_cases(error, extracted_problems[idx][1], extracted_solutions[idx][1], extracted_testcases[idx][1], summary)
             #print(solution)
             #print(extracted_problems[idx][1])
             #print(re.findall(iteration_pattern, solution))
@@ -430,5 +439,9 @@ def creator(url):
             verified_testcases.append(extracted_testcases[idx])
             verified_solutions.append(extracted_solutions[idx])
 
+    for i in range(len(verified_problems)):
+        verified_problems[i] = (i+1, verified_problems[i][1])
+        verified_solutions[i] = (i+1, verified_solutions[i][1])
+        verified_testcases[i] = (i+1, verified_testcases[i][1])
     create_notebook(verified_problems, verified_solutions, verified_testcases)
 

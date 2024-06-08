@@ -48,7 +48,7 @@ const handleSubmit = (event) => {
       <form onSubmit={handleSubmit}>
 
       <header className="header">
-        <h1>DocFinder.com <span className="beta">BETA</span></h1>
+        <h1>DocPuzzles.com <span className="beta">ALPHA</span></h1>
         <p>
           This helps you find documentation on various topics quickly. 
           Input a URL you want to learn about.
