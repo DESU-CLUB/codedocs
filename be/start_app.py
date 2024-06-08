@@ -3,7 +3,7 @@ from flask import Flask, send_file, request, jsonify
 import nbformat as nbf
 import os
 from relevance_ai import creator
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
 CORS(app)
