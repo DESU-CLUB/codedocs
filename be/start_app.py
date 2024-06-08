@@ -9,9 +9,8 @@ app = Flask(__name__)
 @app.route('/', methods=['POST'])
 def create_notebook():
     data = request.get_json()
-    
+
     url = data['url']
-    desc = data['desc']
 
     filename = creator(url)
 
