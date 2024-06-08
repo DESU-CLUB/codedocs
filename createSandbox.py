@@ -1,51 +1,39 @@
-#!/usr/bin/env python3
-
-import pathlib
 import subprocess
-import venv
 import os
+import sys
 
-class _EnvBuilder(venv.EnvBuilder):
+def create_venv_and_run_code(venv_path, requirements_file, code_to_run):
+    # Create a virtual environment
+    subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
+    print("Virtual environment created at", venv_path)
 
-    def __init__(self, *args, **kwargs):
-        self.context = None
-        super().__init__(*args, **kwargs)
+    # Platform-specific virtual environment activation and package installation
+    if os.name == "nt":  # Windows
+        activate_script = os.path.join(venv_path, "Scripts", "activate")
+        pip_path = os.path.join(venv_path, "Scripts", "pip")
+    else:  # Unix/Linux
+        activate_script = os.path.join(venv_path, "bin", "activate")
+        pip_path = os.path.join(venv_path, "bin", "pip")
 
-    def post_setup(self, context):
-        self.context = context
+    # Install packages from requirements.txt
+    if requirements_file:
+        subprocess.run([pip_path, "install", "-r", requirements_file], check=True)
+        print("Required packages installed from", requirements_file)
 
-def _venv_create(venv_path):
-    venv_builder = _EnvBuilder(with_pip=True)
-    venv_builder.create(venv_path)
-    return venv_builder.context
+    # Run the provided code snippet
+    try:
+        # Run the Python code snippet in the virtual environment
+        output = subprocess.run([pip_path[:-4] + "/python", "-c", code_to_run], check=True, capture_output=True, text=True)
+        print("Code ran successfully:", output.stdout)
+        return True
+    except subprocess.CalledProcessError as e:
+        print("Error occurred:", e.stderr)
+        return False, e.stderr
 
-def _run_python_in_venv(venv_context, command):
-    command = [venv_context.env_exe] + command
-    print(command)
-    return subprocess.check_call(command)
+# Example usage:
+venv_path = 'my_venv'
+requirements_file = 'requirements.txt'  # Ensure this file exists with necessary packages
+code_to_run = 'print("Hello, World!")'  # Replace with your actual Python code
 
-def _run_bin_in_venv(venv_context, command):
-    command[0] = str(pathlib.Path(venv_context.bin_path).joinpath(command[0]))
-    print(command)
-    return subprocess.check_call(command)
-
-def _main():
-    venv_path = pathlib.Path.cwd().joinpath('virt')
-    venv_context = _venv_create(venv_path)
-    _run_python_in_venv(venv_context, ['-m', 'pip', 'install', '-U', 'pip'])
-    _run_bin_in_venv(venv_context, ['pip', 'install', 'attrs'])
-
-    # Generate the activation script to activate the virtual environment
-    activate_script = pathlib.Path.cwd().joinpath('activate_and_run.sh')
-    with open(activate_script, 'w') as f:
-        f.write(f"#!/bin/bash\n")
-        f.write(f"source {venv_path.joinpath('bin', 'activate')}\n")
-        f.write(f"echo 'Virtual environment activated.'\n")
-        f.write(f"pip freeze\n")  # Add any additional commands here
-        f.write(f"echo 'Additional commands executed.'\n")
-
-    # Make the generated script executable
-    subprocess.run(['chmod', '+x', str(activate_script)])
-
-if __name__ == '__main__':
-    _main()
+result = create_venv_and_run_code(venv_path, requirements_file, code_to_run)
+print(result)
