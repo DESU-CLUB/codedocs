@@ -43,6 +43,21 @@ def webScraperAgent(url: str) -> json:
     return data.json()["output"]["output"]
 
 
+def getFileName(url):
+    filename = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": f"""Given the following URL, please provide a suitable name for the notebook file that will be created. Ideally the file name should be the topic of the documentation.
+                
+                Here is the URL:{url}
+                """
+            }
+        ]
+    )
+    return filename.choices[0].message.content
+    
+
 def problemGeneratorAgent(summary):
     print("Generating problems for ")
     problems = client.chat.completions.create(

@@ -1,9 +1,12 @@
 # https://stackoverflow.com/questions/60066755/how-to-start-and-run-a-virtualenv-in-python-script/60072329#60072329
 #!/usr/bin/env python3
 
+#!/usr/bin/env python3
+
 import pathlib
 import subprocess
 import venv
+import os
 
 class _EnvBuilder(venv.EnvBuilder):
 
@@ -37,5 +40,20 @@ def _main():
 
 if __name__ == '__main__':
     _main()
-    #print out the package in this environment
+    
+    # Activate the virtual environment in a new shell session
+    activate_script = pathlib.Path.cwd().joinpath('virt', 'bin', 'activate')
+    if os.name == 'nt':  # Windows
+        activate_script = pathlib.Path.cwd().joinpath('virt', 'Scripts', 'activate.bat')
+    
+    print(f"\nTo activate the virtual environment, run:\nsource {activate_script}")
+
+    # For Windows
+    if os.name == 'nt':
+        print(f"On Windows, run:\n{activate_script}")
+
+    # Print out the packages in this environment
     subprocess.run(['virt/bin/pip', 'freeze'])
+
+    # Print out the environment I am in
+    subprocess.run(['which', 'python'])
