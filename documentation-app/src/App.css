@@ -1,0 +1,47 @@
+.app {
+  text-align: center;
+  margin: 0;
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+}
+
+.header {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  display: inline-block;
+  max-width: 500px;
+}
+
+.beta {
+  color: blue;
+  font-style: italic;
+}
+
+.input-box {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.generate-button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  background-color: black;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.image-section {
+  margin-top: 20px;
+}
+
+.image-section img {
+  width: 300px;
+  height: auto;
+}
