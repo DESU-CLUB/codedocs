@@ -4,6 +4,8 @@ import json
 import dotenv
 import os
 from groq import Groq
+import nbformat as nbf
+
 
 # This script provides the agents function for the python api call with relevance api
 dotenv.load_dotenv()
@@ -262,7 +264,80 @@ assert torch.allclose(ifftn_signal, signal)
     return possible_test_cases.choices[0].message.content
 
 
-if __name__ == "__main__":
+def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_notebook'):
+    import nbformat as nbf
+
+    # Create a new notebook
+    nb = nbf.v4.new_notebook()
+
+
+    nb.cells.append(nbf.v4.new_markdown_cell("# Setup\nImport your libraries here"))
+    nb.cells.append(nbf.v4.new_code_cell("import mercury as mr"))
+
+    # Loop through the exercises, solutions, and test cases
+    for ex_number, ex_content in exercises:
+        # Add exercise description as a markdown cell
+        desc_pattern = r'([\s\S]*?)(?=```python)'
+        desc_match = re.search(desc_pattern, ex_content)
+        description = desc_match.group(1).strip() if desc_match else ""
+        nb.cells.append(nbf.v4.new_markdown_cell(f"# Exercise {ex_number}\n{description.strip()}"))
+        
+        # Extract code part from exercise content (assume it's inside triple backticks)
+        code_match = re.search(r'```python\n([\s\S]*?)\n```', ex_content)
+        if code_match:
+            exercise_code = code_match.group(1)
+            # Add exercise code as a code cell
+            nb.cells.append(nbf.v4.new_code_cell(exercise_code.strip()))
+        
+        # Add hidden solution as a code cell with a docstring to prevent execution
+        solution = next((sol[1] for sol in solutions if sol[0] == ex_number), "")
+        if solution:
+            hidden_solution = f'"""\n# Solution hidden\n{solution.strip()}\n"""'
+            solution_cell = nbf.v4.new_code_cell(hidden_solution)
+            solution_cell.metadata.update({"tags": ["hide_cell"]})
+            nb.cells.append(nbf.v4.new_markdown_cell(f'# Solution {ex_number}'))
+            nb.cells.append(solution_cell)
+        
+        # Add test case as a code cell
+        testcase = next((tc[1] for tc in testcases if tc[0] == ex_number), "")
+        if testcase:
+            testcase_cell = nbf.v4.new_code_cell(testcase.strip()+'\n'+'mr.Confetti()')
+            testcase_cell.metadata.update({"tags": ["hide_cell"]})
+            nb.cells.append(testcase_cell)
+
+    # Save the new notebook
+    with open(f'{filename}.ipynb', 'w') as f:
+        nbf.write(nb, f)
+
+
+
+def main():
+    summary = webScraperAgent("https://pytorch.org/docs/stable/tensors.html")
+    generated_problems = problemGeneratorAgent(summary)
+    possible_solution_code = answer_question_agent(generated_problems)
+    possible_test_cases = generate_test_cases(possible_solution_code)
+
+    extracted_problems = re.findall(exercise_pattern, generated_problems)
+    extracted_solutions = re.findall(solution_pattern, possible_solution_code)
+    extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
+    veriified_problems = []
+    verified_solutions = []
+    verified_testcases = []
+    verified_descriptions=  []
+    
+    """ for description,problem, solution, testcase in zip(extracted_problems, extracted_solutions, extracted_testcases):
+        print(solution)
+        print(testcase)
+     """
+    create_notebook(generated_problems, possible_solution_code, possible_test_cases)
+    
+
+
+
+
+
+
+""" if __name__ == "__main__":
     summary = webScraperAgent("https://pytorch.org/docs/stable/tensors.html")
     generated_problems = problemGeneratorAgent(summary)
 
@@ -270,6 +345,7 @@ if __name__ == "__main__":
     for problem in extracted_problems:
         print(problem)
         possible_solution_code = answer_question_agent(problem)
-        possible_test_cases = generate_test_cases(problem)
+        possible_test_cases = generate_test_cases(possible_solution_code)
         print(possible_solution_code)
         print(possible_test_cases)
+ """
