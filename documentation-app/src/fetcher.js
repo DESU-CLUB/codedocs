@@ -23,4 +23,4 @@ function downloadNotebook(urlToPost) {
     }).catch(error => console.error('Download error:', error));
 }
 
-export {downloadNotebook}
+export default downloadNotebook;

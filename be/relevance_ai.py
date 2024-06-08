@@ -49,7 +49,7 @@ def getFileName(url):
             {
                 "role": "user",
                 "content": f"""Given the following URL, please provide a suitable name for the notebook file that will be created. Ideally the file name should be the topic of the documentation.
-                
+                Just write the filename with no other words.
                 Here is the URL:{url}
                 """
             }
@@ -336,4 +336,3 @@ def creator(url):
  """
  
  
-creator(url_to_be_scrapped)

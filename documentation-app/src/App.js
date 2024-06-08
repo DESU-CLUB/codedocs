@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import {React, useState } from 'react';
 import './App.css';
-import { downloadNotebook } from './axios';
+import downloadNotebook from './fetcher';
 
 function App() {
   // State for the main input box
   const [topicInput, setTopicInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   // Handler for the main input box
   const handleTopicChange = (event) => {
@@ -13,19 +14,34 @@ function App() {
 
   // Handler for the speech bubble input box
 
-
-  const handleSubmit = (event) => {
-    event.preventDefault(); // This stops the form from triggering a page reload
-    // This function will be called when the user clicks the "Generate" button
-    // It should fetch the documentation for the URL in the main input box
-    // and display it in the speech bubble
-    if (topicInput) {
-      downloadNotebook();
-    } else {
-      // Add your code or statement here
-      alert('Please enter a URL to learn about the topic');
+  const isValidUrl = (url) => {
+    try {
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
     }
   };
+
+
+const handleSubmit = (event) => {
+  event.preventDefault();
+  if (topicInput && isValidUrl(topicInput)) {
+    setIsLoading(true);
+    downloadNotebook(topicInput)
+      .then(() => {
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error('Download error:', error);
+        alert('Failed to fetch the documentation. Please try again.');
+        setIsLoading(false);
+      });
+  } else {
+    alert('Please enter a valid URL to learn about the topic');
+  }
+};
+
 
   return (
     <div className="app">
@@ -44,7 +60,10 @@ function App() {
           value={topicInput}
           onChange={handleTopicChange}
         />
-        <button className="generate-button">Generate</button>
+<button className="generate-button" disabled={isLoading}>
+  {isLoading ? 'Loading...' : 'Generate'}
+</button>
+
       </header>
      
       <div className="image-section">
