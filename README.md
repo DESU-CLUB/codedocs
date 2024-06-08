@@ -52,11 +52,15 @@ Our product is designed to speed up learning from documentation. It helps open-s
 
 ### Current Features:
 - **Documentation Scraper**: Extracts explanations and code snippets from documentation websites.
-- **Interactive Exercises**: Converts explanations into small, playable exercises.
-- **Solution Generation**: Provides solutions for the exercises.
-- **Code Verifier**: Includes test cases to validate the solutions.
-
+- **Interactive Exercises**: Converts explanations into small, gamified code exercises.
+- **Solution Generation**: Provides clear and easy solutions to the exercises.
+- **Code Verifier**: Uses in-built Python commands and testcases to create a psuedo-interpreter to verify the solutions' correctness
+- **Sandboxed Environment**: Runs the code verification in a sandbox, so that your user environments are safe
+- **Confetti**: The most important feature of our product! Celebrate when you learn!
 ---
+
+### Demo Video
+You can check out our Youtube demo [here!](https://youtu.be/GA_hVCqSfe0)
 
 ## 📣 Call to Action
 
@@ -65,5 +69,5 @@ Join us in our journey to revolutionize how documentation is learned through cod
 ---
 
 ## 📄 Footer
-
+Powered by Groq and Relevance AI, with love from ChatGPT
 *Made with ❤️ by the CodeDocs Team*
