@@ -8,7 +8,7 @@ import nbformat as nbf
 
 
 # This script provides the agents function for the python api call with relevance api
-dotenv.load_dotenv()
+dotenv.load_dotenv("../.env")
 GROQ_KEY = os.environ["GROQ_KEY"]
 print(GROQ_KEY)
 client = Groq(
@@ -19,7 +19,7 @@ url_to_be_scrapped = "https://docs.python.org/3/tutorial/index.html"
 YOUR_API_KEY = os.getenv("RELEVANCE_AI_API_KEY")
 exercise_pattern = r'Exercise (\d+):\s*([\s\S]*?)(?=Exercise \d+:|$)'
 solution_pattern = r'Exercise (\d+)\s*\*\*\n```python\n([\s\S]*?)(?=```)'
-testcase_pattern = r'Testcase (\d+)\*\*\n([\s\S]*?)(?=```)'
+testcase_pattern = r'Exercise (\d+)\s*\*\*\n```python\n([\s\S]*?)(?=```)'
 
 
 ### General workflow ->
@@ -53,7 +53,8 @@ def getFileName(url):
                 Here is the URL:{url}
                 """
             }
-        ]
+        ],
+        model = "mixtral-8x7b-32768"
     )
     return filename.choices[0].message.content
     
@@ -207,69 +208,30 @@ def generate_test_cases(exercise):
         messages=[
             {
                 "role": "user",
-                "content": f"""Here are the completed exercises with test cases:
-
+                "content": f"""
+                Given the following code, please write out the test cases that would verify the correctness of the code. You should write out the test cases that would verify the correctness of the code. Make sure the test cases align with the code.
+                Below is an example of how the testcases would look like: (You must follow the format provided)
+                #######################################################################################################
 **Exercise 1**
 ```python
-import torch
-import numpy as np
-
-# Create a sample signal
-signal = torch.tensor([1, 2, 3, 4, 5, 6, 7, 8], dtype=torch.float32)
-
-# Compute the sample frequencies associated with the Fourier transform of the signal
-freq = torch.fft.fftfreq(signal.size()[0], dtype=torch.float32)
-
-print(freq)
-
-**Testcase 1**
 assert freq.shape == torch.Size([8])
 assert torch.allclose(freq, torch.tensor([-0.5, -0.375, -0.25, -0.125, 0.125, 0.25, 0.375, 0.5]))
 ```
 
+
 **Exercise 2**
 ```python
-import torch
-
-# Create a sample 2D signal
-signal = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-
-# Compute the 2D discrete Fourier transform of the signal
-fftn_signal = torch.fft.fftn(signal)
-
-# Reorder the elements of the FFT data
-reordered_fftn_signal = torch.fft.fftshift(fftn_signal)
-
-print(reordered_fftn_signal)
-
-**Testcase 2**
 assert reordered_fftn_signal.shape == torch.Size([3, 3])
 assert torch.allclose(reordered_fftn_signal, torch.tensor([[7.06225781e+01+1.22464680e-16j, 2.12132034e+00-1.22464680e-16j, 2.12132034e+00+1.22464680e-16j], 
                                                             [2.12132034e+00-1.22464680e-16j, 3.53553391e+00+1.22464680e-16j, 3.53553391e+00-1.22464680e-16j], 
                                                             [2.12132034e+00+1.22464680e-16j, 3.53553391e+00-1.22464680e-16j, 7.06225781e+01-1.22464680e-16j]]))
-```
-
 **Exercise 3**
 ```python
-import torch
-
-# Create a sample 2D signal
-signal = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
-
-# Compute the 2D discrete Fourier transform of the signal
-fftn_signal = torch.fft.fftn(signal)
-
-# Compute the inverse 2D discrete Fourier transform of the signal
-ifftn_signal = torch.fft.ifftn(fftn_signal)
-
-print(ifftn_signal)
-
-**Testcase 3**
 assert ifftn_signal.shape == torch.Size([3, 3])
 assert torch.allclose(ifftn_signal, signal)
 ```
-    
-    Please also generate test cases for the code that you write. You should ensure that the testcases work. You need to make sure other than the incomplete line, the rest of the previous template code is unchanged. 
+  ################################################################################################################  
+    Below is the solutions you have to write test cases for:
     
     {exercise}
 """
@@ -288,7 +250,7 @@ def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_no
 
     nb.cells.append(nbf.v4.new_markdown_cell("# Setup\nImport your libraries here"))
     nb.cells.append(nbf.v4.new_code_cell("import mercury as mr"))
-
+    print(exercises)
     # Loop through the exercises, solutions, and test cases
     for ex_number, ex_content in exercises:
         # Add exercise description as a markdown cell
@@ -314,6 +276,7 @@ def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_no
             nb.cells.append(solution_cell)
         
         # Add test case as a code cell
+        print(testcases)
         testcase = next((tc[1] for tc in testcases if tc[0] == ex_number), "")
         if testcase:
             testcase_cell = nbf.v4.new_code_cell(testcase.strip()+'\n'+'mr.Confetti()')
@@ -332,10 +295,16 @@ def creator(url):
     generated_problems = problemGeneratorAgent(summary)
     possible_solution_code = answer_question_agent(generated_problems)
     possible_test_cases = generate_test_cases(possible_solution_code)
-
+    print(possible_test_cases)
     extracted_problems = re.findall(exercise_pattern, generated_problems)
     extracted_solutions = re.findall(solution_pattern, possible_solution_code)
     extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
+    while not(len(extracted_problems) == len(extracted_solutions) == len(extracted_testcases)):
+        possible_solution_code = answer_question_agent(generated_problems)
+        possible_test_cases = generate_test_cases(possible_solution_code)
+        extracted_problems = re.findall(exercise_pattern, generated_problems)
+        extracted_solutions = re.findall(solution_pattern, possible_solution_code)
+        extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
     veriified_problems = []
     verified_solutions = []
     verified_testcases = []
@@ -345,7 +314,7 @@ def creator(url):
         print(solution)
         print(testcase)
      """
-    create_notebook(generated_problems, possible_solution_code, possible_test_cases)
+    create_notebook(extracted_problems, extracted_solutions, extracted_testcases)
     return filename
 
 
@@ -365,3 +334,6 @@ def creator(url):
         print(possible_solution_code)
         print(possible_test_cases)
  """
+ 
+ 
+creator(url_to_be_scrapped)
