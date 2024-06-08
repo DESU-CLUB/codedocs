@@ -14,7 +14,7 @@ from createSandbox import create_venv_and_run_code
 
 # This script provides the agents function for the python api call with relevance api
 dotenv.load_dotenv("../.env")
-GROQ_KEY = os.environ["GROQ_KEY"]
+GROQ_KEY = "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"
 print(GROQ_KEY)
 client = Groq(
     api_key=GROQ_KEY
@@ -376,7 +376,7 @@ def creator(url):
             # Generate a new solution template based on the error
             # have to correct based on the error
             solution = correct_test_cases(error, extracted_problems[idx][1], extracted_solutions[idx][1], extracted_testcases[idx][1])
-            solution = extracted_solutions[idx][1]
+            extracted_solutions[idx][1] = solution
             # Re-verify the new solution
             status, err = create_venv_and_run_code("./my_venv", "./requirements.txt",
                                  extracted_solutions[idx][1] + extracted_testcases[idx][1])
