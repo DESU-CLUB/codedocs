@@ -6,12 +6,11 @@ from relevance_ai import creator
 
 app = Flask(__name__)
 
-@app.route('/', methods=['POST'])
+@app.route('/create_notebook', methods=['POST'])
 def create_notebook():
     data = request.get_json()
-    
+
     url = data['url']
-    desc = data['desc']
 
     filename = creator(url)
 
