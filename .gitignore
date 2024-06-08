@@ -3,3 +3,8 @@
 .interactiveDocs/.env
 .interactiveDocs/.ipynb-checkpoints
 virt/
+.venv
+/be/my_venv/
+my_venv/lib
+my_venv/bin
+./.idea

@@ -25,15 +25,7 @@ def create_venv_and_run_code(venv_path, requirements_file, code_to_run):
         # Run the Python code snippet in the virtual environment
         output = subprocess.run([pip_path[:-4] + "/python", "-c", code_to_run], check=True, capture_output=True, text=True)
         print("Code ran successfully:", output.stdout)
-        return True
+        return True, None
     except subprocess.CalledProcessError as e:
         print("Error occurred:", e.stderr)
         return False, e.stderr
-
-# Example usage:
-venv_path = 'my_venv'
-requirements_file = 'requirements.txt'  # Ensure this file exists with necessary packages
-code_to_run = 'print("Hello, World!")'  # Replace with your actual Python code
-
-result = create_venv_and_run_code(venv_path, requirements_file, code_to_run)
-print(result)

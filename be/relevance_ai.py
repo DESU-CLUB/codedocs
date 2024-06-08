@@ -3,9 +3,14 @@ import requests
 import json
 import dotenv
 import os
+import sys
 from groq import Groq
 import nbformat as nbf
 
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+print(parent_dir)
+sys.path.insert(0, parent_dir)
+from createSandbox import create_venv_and_run_code
 
 # This script provides the agents function for the python api call with relevance api
 dotenv.load_dotenv("../.env")
@@ -26,22 +31,33 @@ testcase_pattern = r'Exercise (\d+)\s*\*\*\n```python\n([\s\S]*?)(?=```)'
 ## scrape -> problems generator -> problems verifier -> publish to ipynb
 
 ### This scrapes the relevant data from the documentation sites
-def webScraperAgent(url: str) -> json:
+def webScraperAgent(url: str) -> dict:
     print(f"Scraping {url}")
-    data = requests.post(
-        'https://api-f1db6c.stack.tryrelevance.com/latest/studios/191d63f3-79e9-4c9c-bbdd-63183acb8c5e/trigger_limited',
+    ok = 0
+    empty_dict = {}
+    response = None
+    while ok == 0:
+        response = requests.post(
+            'https://api-f1db6c.stack.tryrelevance.com/latest/studios/191d63f3-79e9-4c9c-bbdd-63183acb8c5e/trigger_limited',
+            headers={"Content-Type": "application/json"},
+            data=json.dumps(
+                {
+                    "params": {
+                        "url": url,
+                        "objective_of_scraping": (
+                            "You are an agent responsible for scraping out relevant information "
+                            "from coding documentations. Your main job is to ensure accuracy, "
+                            "so do not include things you are not sure of."
+                        )
+                    },
+                    "project": "aab78808483b-4114-81eb-ae9686888922"
+                }
+            )
+        )
+        if response.status_code == 200:
+            ok = 1  # fix occasional groq-related issues
 
-        headers={"Content-Type": "application/json"},
-        data=json.dumps(
-            {"params": {"url": url,
-                        "objective_of_scraping": "You are a agent responsible in scraping out relevant information "
-                                                 "from coding documentations. Your main job is to ensure accuracy, "
-                                                 "so do not include things you are not sure of."}, "project":
-                 "aab78808483b-4114-81eb-ae9686888922"})
-    )
-
-    return data.json()["output"]["output"]
-
+    return response.json()["output"]["output"]
 
 
 
@@ -226,6 +242,50 @@ assert torch.allclose(ifftn_signal, signal)
         model="mixtral-8x7b-32768")
     return possible_test_cases.choices[0].message.content
 
+def correct_test_cases(errors, question, code, test_cases):
+    print("correcting test case")
+    test_caller = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": f""" Due to the errors present in the following code for the question,
+                it does not work correctly. Rewrite the code such that it can pass the test cases.
+                Errors: {errors},
+                Original question: {question},
+                Original code: {code},
+                Original test_cases: {test_cases}
+                Return only the re-written code, with NO extra text.
+                """,}
+        ],
+        model = "mixtral-8x7b-32768")
+    return test_caller.choices[0].message.content
+
+def library_finder(problem):
+    print("finding the right libraries to install")
+    libraries_found = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": f"""Find out the libraries needed to solve the problem, spaced apart. do not include additional 
+                text, do not include asterisks.
+                Output as such:
+                           Example 1: torch, matplotlib
+                           Example 2: torch, tensorflow, BeautifulSoup, requests, lxml
+                           The problem to solve is {problem}
+                           """
+            },],
+        model="mixtral-8x7b-32768")
+
+    model_out = libraries_found.choices[0].message.content
+    pattern = r"libraries:\s*(.*)[.]"
+    match = re.search(pattern, model_out)
+
+    if match:
+        libraries = match.group(1).split(', ')
+        libraries_string = ' '.join(libraries)
+        return libraries_string
+    else:
+        return ""
 
 def create_notebook(exercises, solutions, testcases, filename = 'new_exercise_notebook'):
     import nbformat as nbf
@@ -280,7 +340,7 @@ def creator(url):
     generated_problems = problemGeneratorAgent(summary)
     possible_solution_code = answer_question_agent(generated_problems)
     possible_test_cases = generate_test_cases(possible_solution_code)
-    print(possible_test_cases)
+
     extracted_problems = re.findall(exercise_pattern, generated_problems)
     extracted_solutions = re.findall(solution_pattern, possible_solution_code)
     extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
@@ -290,33 +350,48 @@ def creator(url):
         extracted_problems = re.findall(exercise_pattern, generated_problems)
         extracted_solutions = re.findall(solution_pattern, possible_solution_code)
         extracted_testcases = re.findall(testcase_pattern, possible_test_cases)
-    veriified_problems = []
+    zipped_repository = zip(extracted_problems, extracted_solutions, extracted_testcases)
+    print(zipped_repository)
+
+
+    #code-runner
+    f = open("./requirements.txt","w")
+    libraries_to_install = "torch " + library_finder(generated_problems[-1])
+    print("libraries to install: " + str(libraries_to_install))
+    f.write(libraries_to_install)
+
+    verified_problems = []
     verified_solutions = []
     verified_testcases = []
-    verified_descriptions=  []
-    
-    """ for description,problem, solution, testcase in zip(extracted_problems, extracted_solutions, extracted_testcases):
-        print(solution)
-        print(testcase)
-     """
-    create_notebook(extracted_problems, extracted_solutions, extracted_testcases)
+
+    for idx in range(len(extracted_testcases)):
+        status, err = create_venv_and_run_code("./my_venv", "./requirements.txt",
+                                 extracted_solutions[idx][1] + extracted_testcases[idx][1])
+        retry = 0
+        # Loop until the solution is verified
+        while not status and retry < 3:
+            # Log the error or capture the error details
+            error = err
+
+            # Generate a new solution template based on the error
+            # have to correct based on the error
+            solution = correct_test_cases(error, extracted_problems[idx][1], extracted_solutions[idx][1], extracted_testcases[idx][1])
+            solution = extracted_solutions[idx][1]
+            # Re-verify the new solution
+            status, err = create_venv_and_run_code("./my_venv", "./requirements.txt",
+                                 extracted_solutions[idx][1] + extracted_testcases[idx][1])
+            retry += 1
+        if status:
+            verified_problems.append(extracted_problems[idx])
+            verified_testcases.append(extracted_testcases[idx])
+            verified_solutions.append(extracted_solutions[idx])
 
 
 
+    notebook_filename = create_notebook(verified_problems, verified_solutions, verified_testcases)
+    print(notebook_filename)
+    return notebook_filename
 
-
-
-""" if __name__ == "__main__":
-    summary = webScraperAgent("https://pytorch.org/docs/stable/tensors.html")
-    generated_problems = problemGeneratorAgent(summary)
-
-    extracted_problems = re.findall(exercise_pattern, generated_problems)
-    for problem in extracted_problems:
-        print(problem)
-        possible_solution_code = answer_question_agent(problem)
-        possible_test_cases = generate_test_cases(possible_solution_code)
-        print(possible_solution_code)
-        print(possible_test_cases)
- """
- 
+if __name__ == "__main__":
+    creator("https://pytorch.org/docs/stable/tensors.html")
  
