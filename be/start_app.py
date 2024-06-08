@@ -15,8 +15,8 @@ def create_notebook():
             print(data)
             url = data['url']
 
-            filename = creator(url)
-
+            creator(url)
+            filename = 'new_exercise_notebook'
             # Save the notebook
             notebook_path = f'{filename}.ipynb'
 
