@@ -1,6 +1,7 @@
-import {React, useState } from 'react';
+import React, { useState } from 'react';
 import './App.css';
 import downloadNotebook from './fetcher';
+
 
 function App() {
   // State for the main input box
@@ -50,7 +51,7 @@ const handleSubmit = (event) => {
       <header className="header">
         <h1>DocPuzzles.com <span className="beta">ALPHA</span></h1>
         <p>
-          This helps you find documentation on various topics quickly. 
+          This helps you find documentation on various topics and turn them into code quickly. 
           Input a URL you want to learn about.
         </p>
         <input 
@@ -70,6 +71,9 @@ const handleSubmit = (event) => {
         <img src="comical-doc-image.webp" alt="Comical documentation theme" />
       </div>
       </form>
+      <footer class = 'footers'>
+        Powered by <a href = 'https://groq.com/'>Groq</a> and <a href = "https://relevanceai.com/">Relevance AI</a>
+      </footer>
     </div>
   );
 }

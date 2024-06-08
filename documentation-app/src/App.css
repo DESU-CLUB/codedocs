@@ -100,3 +100,19 @@
 .speech-bubble input:focus {
   border-color: blue;
 }
+
+
+/* Add this CSS to your stylesheet */
+
+.footers {
+  font-size: 12px;          /* Smaller font size */
+  color: #777;              /* Light gray color */
+  text-align: center;       /* Center the text */
+  padding: 5px;            /* Padding around the text */
+  background-color: #f9f9f9;/* Light background color */
+  position: fixed;          /* Fix the footer at the bottom */
+  width: 100%;              /* Full width */
+  bottom: 0;                /* Position it at the bottom */
+  border-top: 1px solid #ddd; /* Light border on top */
+  right: 5px;                /* Add some space on the right */
+}
